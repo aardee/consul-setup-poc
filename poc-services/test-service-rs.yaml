@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-service
+spec:
+  selector:
+    matchLabels:
+      app: test-service
+  replicas: 2
+  minReadySeconds: 10
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1 
+  template:
+    metadata:
+      labels:
+        app: test-service
+      annotations:
+        "consul.hashicorp.com/connect-inject": "true"
+    spec:
+      containers:
+      - name: test-service
+        image: aardee/test-service-poc:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3002
+          name: http
+      initContainers:
+      - name: test-service-consul-init
+        image: aardee/test-service-consul-init:latest
+        imagePullPolicy: Always
+        env:
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: HOST_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.hostIP

@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: apigateway
+  labels:
+    app: "apigateway"
+  annotations:
+    "consul.hashicorp.com/connect-inject": "true"
+    "consul.hashicorp.com/connect-service-upstreams": "user-service:3001, test-service:3002"
+spec:
+  containers:
+  - name: apigateway
+    image: aardee/apigateway-nest:latest
+    imagePullPolicy: Always
+    ports:
+    - containerPort: 3000
+      name: http
+    env:
+    - name: USER_SERVICE_URL
+      value: "http://localhost:3001"
+    - name: TEST_SERVICE_URL
+      value: "http://localhost:3002"
+  initContainers:
+  - name: apigateway-init
+    image: aardee/apigateway-consul-init:latest
+    imagePullPolicy: Always
+    env:
+    - name: POD_IP
+      valueFrom:
+        fieldRef:
+          fieldPath: status.podIP
+    - name: HOST_IP
+      valueFrom:
+        fieldRef:
+          fieldPath: status.hostIP
+---
+apiVersion: "v1"
+kind: "Service"
+metadata:
+  name: "apigateway-service-load-balancer"
+  namespace: "default"
+  labels:
+    app: "apigateway"
+spec:
+  ports:
+  - protocol: "TCP"
+    port: 80
+    targetPort: 3000
+  selector:
+    app: "apigateway"
+  type: "LoadBalancer"
+  loadBalancerIP: ""
